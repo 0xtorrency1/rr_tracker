@@ -14,7 +14,7 @@
 </head>
 <body>
 
-  <h2>Trade Tracker</h2>
+  <h2>RR Trade Tracker</h2>
 
   <label>Starting Balance ($):</label>
   <input type="number" id="balanceInput" placeholder="e.g. 100">
@@ -31,6 +31,8 @@
     <p><strong>Current Balance:</strong> $<span id="currentBalance">0</span></p>
     <p><strong>Next Risk:</strong> <span id="nextRiskPercent">0</span>% = $<span id="nextRiskAmount">0</span></p>
     <p><strong>Profit Factor:</strong> <span id="profitFactor">-</span></p>
+    <p><strong>Current Drawdown:</strong> <span id="currentDrawdown">0</span>%</p>
+    <p><strong>Max Drawdown:</strong> <span id="maxDrawdown">0</span>%</p>
 
     <button onclick="recordTrade(true)">Win Trade</button>
     <button onclick="recordTrade(false)">Lose Trade</button>
@@ -61,6 +63,9 @@
     let grossProfit = 0;
     let grossLoss = 0;
 
+    let peakBalance = 0;
+    let maxDrawdown = 0;
+
     window.onload = () => {
       if (localStorage.getItem("trackerData")) {
         const data = JSON.parse(localStorage.getItem("trackerData"));
@@ -71,6 +76,9 @@
         rr = data.rr || 1;
         grossProfit = data.grossProfit || 0;
         grossLoss = data.grossLoss || 0;
+
+        peakBalance = data.peakBalance || balance;
+        maxDrawdown = data.maxDrawdown || 0;
 
         document.getElementById("riskPercent").value = riskPercent;
         document.getElementById("rrRatio").value = rr;
@@ -88,6 +96,8 @@
       rr = parseFloat(document.getElementById("rrRatio").value);
       if (isNaN(balance) || isNaN(riskPercent) || isNaN(rr)) return alert("Please fill in all fields correctly.");
 
+      peakBalance = balance;
+      maxDrawdown = 0;
       tradeCount = 0;
       history = [];
       grossProfit = 0;
@@ -119,6 +129,13 @@
         risk: riskAmount.toFixed(2),
         rr: rr
       });
+      if (balance > peakBalance) {
+        peakBalance = balance;
+    }
+      const drawdown = ((peakBalance - balance) / peakBalance) * 100;
+      if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
 
       saveData();
       updateTracker();
@@ -132,6 +149,9 @@
 
       const pf = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : grossProfit > 0 ? "∞" : "-";
       document.getElementById("profitFactor").textContent = pf;
+      const currDraw = peakBalance > 0 ? ((peakBalance - balance) / peakBalance) * 100 : 0;
+      document.getElementById("currentDrawdown").textContent = currDraw.toFixed(2);
+      document.getElementById("maxDrawdown").textContent = maxDrawdown.toFixed(2);
     }
 
     function renderHistory() {
@@ -170,7 +190,9 @@
         riskPercent,
         rr,
         grossProfit,
-        grossLoss
+        grossLoss,
+        peakBalance,
+        maxDrawdown
       };
       localStorage.setItem("trackerData", JSON.stringify(data));
     }
