@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RR Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 40px;
+    }
+    #balance {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 15px 25px;
+      margin: 10px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🎯 RR Tracker (1RR @ 5%)</h2>
+  <div id="balance">Balance: $10.00</div>
+
+  <button onclick="applyRR('win')">✅ Win</button>
+  <button onclick="applyRR('loss')">❌ Loss</button>
+  <br><br>
+  <button onclick="resetBalance()">🔄 Reset</button>
+
+  <script>
+    let balance = 10;
+
+    function updateDisplay() {
+      document.getElementById("balance").innerText = "Balance: $" + balance.toFixed(2);
+    }
+
+    function applyRR(result) {
+      const risk = balance * 0.05;
+      if (result === 'win') balance += risk;
+      if (result === 'loss') balance -= risk;
+      updateDisplay();
+    }
+
+    function resetBalance() {
+      balance = 10;
+      updateDisplay();
+    }
+  </script>
+
+</body>
+</html>
