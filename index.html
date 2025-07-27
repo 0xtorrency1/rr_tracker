@@ -1,51 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>RR Tracker</title>
+  <meta charset="UTF-8">
+  <title>1RR Compounding Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 10px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
       text-align: center;
-      padding-top: 40px;
     }
-    #balance {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 15px 25px;
-      margin: 10px;
-      font-size: 1.2em;
+    th {
+      background-color: #f5f5f5;
     }
   </style>
 </head>
 <body>
 
-  <h2>🎯 RR Tracker (1RR @ 5%)</h2>
-  <div id="balance">Balance: $10.00</div>
+  <h2>📈 1RR Compounding Tracker</h2>
 
-  <button onclick="applyRR('win')">✅ Win</button>
-  <button onclick="applyRR('loss')">❌ Loss</button>
-  <br><br>
-  <button onclick="resetBalance()">🔄 Reset</button>
+  <label for="balance">Starting Balance ($):</label>
+  <input type="number" id="balance" value="10">
+
+  <button onclick="win()">✅ Win (+1RR)</button>
+  <button onclick="lose()">❌ Lose (-1RR)</button>
+
+  <h3>💰 Current Balance: $<span id="currentBalance">10.00</span></h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Trade #</th>
+        <th>Previous</th>
+        <th>Result</th>
+        <th>New Balance</th>
+      </tr>
+    </thead>
+    <tbody id="logTable"></tbody>
+  </table>
 
   <script>
-    let balance = 10;
+    let balanceInput = document.getElementById("balance");
+    let currentBalance = parseFloat(balanceInput.value);
+    let balanceDisplay = document.getElementById("currentBalance");
+    let logTable = document.getElementById("logTable");
+    let tradeNumber = 0;
 
-    function updateDisplay() {
-      document.getElementById("balance").innerText = "Balance: $" + balance.toFixed(2);
+    function updateBalanceDisplay() {
+      balanceDisplay.textContent = currentBalance.toFixed(2);
     }
 
-    function applyRR(result) {
-      const risk = balance * 0.05;
-      if (result === 'win') balance += risk;
-      if (result === 'loss') balance -= risk;
-      updateDisplay();
+    function logTrade(prev, result, newBal) {
+      tradeNumber++;
+      let row = logTable.insertRow();
+      row.insertCell(0).textContent = tradeNumber;
+      row.insertCell(1).textContent = `$${prev.toFixed(2)}`;
+      row.insertCell(2).textContent = result;
+      row.insertCell(3).textContent = `$${newBal.toFixed(2)}`;
     }
 
-    function resetBalance() {
-      balance = 10;
-      updateDisplay();
+    balanceInput.addEventListener("change", () => {
+      currentBalance = parseFloat(balanceInput.value);
+      tradeNumber = 0;
+      logTable.innerHTML = "";
+      updateBalanceDisplay();
+    });
+
+    function win() {
+      let prev = currentBalance;
+      currentBalance *= 2;
+      updateBalanceDisplay();
+      logTrade(prev, "Win", currentBalance);
+    }
+
+    function lose() {
+      let prev = currentBalance;
+      currentBalance = 0;
+      updateBalanceDisplay();
+      logTrade(prev, "Loss", currentBalance);
     }
   </script>
 
