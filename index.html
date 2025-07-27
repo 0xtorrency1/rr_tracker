@@ -1,148 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>RR Compounding Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trade Tracker</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 550px;
-      margin: 30px auto;
-      padding: 10px;
-    }
-    input, button {
-      padding: 10px;
-      margin: 5px 0;
-      width: 100%;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: center;
-    }
-    th {
-      background-color: #f5f5f5;
-    }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, button { margin: 5px 0; padding: 8px; width: 100%; }
+    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background-color: #f0f0f0; }
   </style>
 </head>
 <body>
 
-  <h2>📈 Custom RR Compounding Tracker</h2>
+  <h2>Trade Tracker</h2>
 
-  <label for="balance">Starting Balance ($):</label>
-  <input type="number" id="balance" value="10" step="0.01">
+  <label>Starting Balance ($):</label>
+  <input type="number" id="balanceInput" placeholder="e.g. 100">
 
-  <label for="riskPercent">Risk per Trade (%):</label>
-  <input type="number" id="riskPercent" value="5" step="0.1" min="0.1">
+  <label>Risk % Per Trade:</label>
+  <input type="number" id="riskPercent" placeholder="e.g. 5">
 
-  <label for="rrRatio">Risk:Reward Ratio (e.g. 2 for 1:2):</label>
-  <input type="number" id="rrRatio" value="1" step="0.1" min="0.1">
+  <label>Risk:Reward Ratio (e.g. 1.5, 2):</label>
+  <input type="number" step="0.1" id="rrRatio" placeholder="e.g. 1.5">
 
-  <button onclick="win()">✅ Win</button>
-  <button onclick="lose()">❌ Lose</button>
-  <button onclick="resetTracker()">🔄 Reset</button>
+  <button onclick="setInitial()">Start / Update Balance</button>
 
-  <h3>💰 Current Balance: $<span id="currentBalance">10.00</span></h3>
-  <h4>📌 Next Trade Risk: <span id="nextRiskDisplay">5% = $0.50</span></h4>
+  <div id="tracker" style="display:none;">
+    <p><strong>Current Balance:</strong> $<span id="currentBalance">0</span></p>
+    <p><strong>Next Risk:</strong> <span id="nextRiskPercent">0</span>% = $<span id="nextRiskAmount">0</span></p>
+    <p><strong>Profit Factor:</strong> <span id="profitFactor">-</span></p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Trade #</th>
-        <th>Previous</th>
-        <th>Result</th>
-        <th>Risk %</th>
-        <th>RR</th>
-        <th>Amount Risked</th>
-        <th>Profit/Loss</th>
-        <th>New Balance</th>
-      </tr>
-    </thead>
-    <tbody id="logTable"></tbody>
-  </table>
+    <button onclick="recordTrade(true)">Win Trade</button>
+    <button onclick="recordTrade(false)">Lose Trade</button>
+    <button onclick="resetTracker()">Reset</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Prev Balance</th>
+          <th>Result</th>
+          <th>New Balance</th>
+          <th>Risk $</th>
+          <th>RR</th>
+        </tr>
+      </thead>
+      <tbody id="history"></tbody>
+    </table>
+  </div>
 
   <script>
-    let balanceInput = document.getElementById("balance");
-    let riskInput = document.getElementById("riskPercent");
-    let rrInput = document.getElementById("rrRatio");
-    let balanceDisplay = document.getElementById("currentBalance");
-    let nextRiskDisplay = document.getElementById("nextRiskDisplay");
-    let logTable = document.getElementById("logTable");
+    let balance = 0;
+    let tradeCount = 0;
+    let history = [];
+    let riskPercent = 5;
+    let rr = 1;
 
-    let currentBalance = parseFloat(balanceInput.value);
-    let tradeNumber = 0;
+    let grossProfit = 0;
+    let grossLoss = 0;
 
-    function getRiskPercent() {
-      return parseFloat(riskInput.value);
+    window.onload = () => {
+      if (localStorage.getItem("trackerData")) {
+        const data = JSON.parse(localStorage.getItem("trackerData"));
+        balance = data.balance;
+        tradeCount = data.tradeCount;
+        history = data.history || [];
+        riskPercent = data.riskPercent || 5;
+        rr = data.rr || 1;
+        grossProfit = data.grossProfit || 0;
+        grossLoss = data.grossLoss || 0;
+
+        document.getElementById("riskPercent").value = riskPercent;
+        document.getElementById("rrRatio").value = rr;
+        document.getElementById("balanceInput").value = balance;
+
+        updateTracker();
+        renderHistory();
+        document.getElementById("tracker").style.display = "block";
+      }
+    };
+
+    function setInitial() {
+      balance = parseFloat(document.getElementById("balanceInput").value);
+      riskPercent = parseFloat(document.getElementById("riskPercent").value);
+      rr = parseFloat(document.getElementById("rrRatio").value);
+      if (isNaN(balance) || isNaN(riskPercent) || isNaN(rr)) return alert("Please fill in all fields correctly.");
+
+      tradeCount = 0;
+      history = [];
+      grossProfit = 0;
+      grossLoss = 0;
+      saveData();
+      updateTracker();
+      renderHistory();
+      document.getElementById("tracker").style.display = "block";
     }
 
-    function getRRRatio() {
-      return parseFloat(rrInput.value);
+    function recordTrade(win) {
+      const prev = balance;
+      const riskAmount = (riskPercent / 100) * balance;
+      const reward = win ? riskAmount * rr : -riskAmount;
+      balance += reward;
+      tradeCount++;
+
+      if (win) {
+        grossProfit += reward;
+      } else {
+        grossLoss += Math.abs(reward);
+      }
+
+      history.push({
+        trade: tradeCount,
+        prev: prev.toFixed(2),
+        result: win ? "Win" : "Loss",
+        newBal: balance.toFixed(2),
+        risk: riskAmount.toFixed(2),
+        rr: rr
+      });
+
+      saveData();
+      updateTracker();
+      renderHistory();
     }
 
-    function updateBalanceDisplay() {
-      balanceDisplay.textContent = currentBalance.toFixed(2);
-      updateNextRiskDisplay();
+    function updateTracker() {
+      document.getElementById("currentBalance").textContent = balance.toFixed(2);
+      document.getElementById("nextRiskPercent").textContent = riskPercent;
+      document.getElementById("nextRiskAmount").textContent = ((riskPercent / 100) * balance).toFixed(2);
+
+      const pf = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : grossProfit > 0 ? "∞" : "-";
+      document.getElementById("profitFactor").textContent = pf;
     }
 
-    function updateNextRiskDisplay() {
-      let percent = getRiskPercent();
-      let riskAmount = currentBalance * (percent / 100);
-      nextRiskDisplay.textContent = `${percent}% = $${riskAmount.toFixed(2)}`;
-    }
-
-    function logTrade(prev, result, percent, rr, risked, profitOrLoss, newBal) {
-      tradeNumber++;
-      let row = logTable.insertRow();
-      row.insertCell(0).textContent = tradeNumber;
-      row.insertCell(1).textContent = `$${prev.toFixed(2)}`;
-      row.insertCell(2).textContent = result;
-      row.insertCell(3).textContent = `${percent}%`;
-      row.insertCell(4).textContent = rr.toFixed(2);
-      row.insertCell(5).textContent = `$${risked.toFixed(2)}`;
-      row.insertCell(6).textContent = `${result === "Win" ? "+" : "-"}$${profitOrLoss.toFixed(2)}`;
-      row.insertCell(7).textContent = `$${newBal.toFixed(2)}`;
-    }
-
-    function win() {
-      let prev = currentBalance;
-      let percent = getRiskPercent();
-      let rr = getRRRatio();
-      let riskAmount = currentBalance * (percent / 100);
-      let reward = riskAmount * rr;
-      currentBalance += reward;
-      updateBalanceDisplay();
-      logTrade(prev, "Win", percent, rr, riskAmount, reward, currentBalance);
-    }
-
-    function lose() {
-      let prev = currentBalance;
-      let percent = getRiskPercent();
-      let rr = getRRRatio();
-      let riskAmount = currentBalance * (percent / 100);
-      currentBalance -= riskAmount;
-      updateBalanceDisplay();
-      logTrade(prev, "Loss", percent, rr, riskAmount, riskAmount, currentBalance);
+    function renderHistory() {
+      const tbody = document.getElementById("history");
+      tbody.innerHTML = "";
+      history.forEach((h) => {
+        const row = `<tr>
+          <td>${h.trade}</td>
+          <td>$${h.prev}</td>
+          <td>${h.result}</td>
+          <td>$${h.newBal}</td>
+          <td>$${h.risk}</td>
+          <td>${h.rr}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
     }
 
     function resetTracker() {
-      tradeNumber = 0;
-      logTable.innerHTML = "";
-      currentBalance = parseFloat(balanceInput.value);
-      updateBalanceDisplay();
+      if (!confirm("Reset everything? This cannot be undone.")) return;
+      balance = 0;
+      tradeCount = 0;
+      history = [];
+      grossProfit = 0;
+      grossLoss = 0;
+      localStorage.removeItem("trackerData");
+      document.getElementById("tracker").style.display = "none";
+      alert("Reset complete. Reload the page to start fresh.");
     }
 
-    balanceInput.addEventListener("change", resetTracker);
-    riskInput.addEventListener("input", updateNextRiskDisplay);
-    rrInput.addEventListener("input", updateNextRiskDisplay);
-
-    // Initial setup
-    updateBalanceDisplay();
+    function saveData() {
+      const data = {
+        balance,
+        tradeCount,
+        history,
+        riskPercent,
+        rr,
+        grossProfit,
+        grossLoss
+      };
+      localStorage.setItem("trackerData", JSON.stringify(data));
+    }
   </script>
 
 </body>
