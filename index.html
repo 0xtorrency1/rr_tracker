@@ -35,10 +35,11 @@
   <h2>📈 1RR Compounding Tracker</h2>
 
   <label for="balance">Starting Balance ($):</label>
-  <input type="number" id="balance" value="10">
+  <input type="number" id="balance" value="10" step="0.01">
 
-  <button onclick="win()">✅ Win (+1RR)</button>
-  <button onclick="lose()">❌ Lose (-1RR)</button>
+  <button onclick="win()">✅ Win (+5%)</button>
+  <button onclick="lose()">❌ Lose (-5%)</button>
+  <button onclick="resetTracker()">🔄 Reset</button>
 
   <h3>💰 Current Balance: $<span id="currentBalance">10.00</span></h3>
 
@@ -74,26 +75,35 @@
       row.insertCell(3).textContent = `$${newBal.toFixed(2)}`;
     }
 
-    balanceInput.addEventListener("change", () => {
-      currentBalance = parseFloat(balanceInput.value);
-      tradeNumber = 0;
-      logTable.innerHTML = "";
-      updateBalanceDisplay();
-    });
-
     function win() {
       let prev = currentBalance;
-      currentBalance *= 2;
+      let gain = currentBalance * 0.05;
+      currentBalance += gain;
       updateBalanceDisplay();
       logTrade(prev, "Win", currentBalance);
     }
 
     function lose() {
       let prev = currentBalance;
-      currentBalance = 0;
+      let loss = currentBalance * 0.05;
+      currentBalance -= loss;
       updateBalanceDisplay();
       logTrade(prev, "Loss", currentBalance);
     }
+
+    function resetTracker() {
+      tradeNumber = 0;
+      logTable.innerHTML = "";
+      currentBalance = parseFloat(balanceInput.value);
+      updateBalanceDisplay();
+    }
+
+    balanceInput.addEventListener("change", () => {
+      resetTracker();
+    });
+
+    // Initialize display
+    updateBalanceDisplay();
   </script>
 
 </body>
